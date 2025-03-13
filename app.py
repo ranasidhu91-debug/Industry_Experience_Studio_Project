@@ -17,3 +17,9 @@ st.write(result[0])
 
 cursor.close()
 conn.close()
+
+if __name__ == "__main__":
+    import os
+    # Make sure the Streamlit listens to 0.0.0.0
+    port = int(os.getenv("PORT", 8501))
+    os.system(f"streamlit run app.py --server.address 0.0.0.0 --server.port {port}")
