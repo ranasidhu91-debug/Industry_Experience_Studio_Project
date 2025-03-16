@@ -1,1 +1,0 @@
-root_url = "http://api.waqi.info/feed/"
