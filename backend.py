@@ -43,8 +43,8 @@ def get_air_quality(lat,lon):
 
     
 
-values = get_air_quality(3.0396684249564596,101.4351033472648)
+#values = get_air_quality(3.0396684249564596,101.4351033472648)
 
-print(values['aqi'])
-print(values['components'])
-print(values['time'])
+#print(values['aqi'])
+#print(values['components'])
+#print(values['time'])
