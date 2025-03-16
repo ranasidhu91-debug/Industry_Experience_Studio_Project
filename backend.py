@@ -5,7 +5,7 @@ from geopy.geocoders import Nominatim
 def get_coordinates_from_zip(zip_code, country_code):
     """Converts ZIP + country code to latitude & longitude using OpenStreetMap's Nominatim."""
     geolocator = Nominatim(user_agent="geoapi")
-    location = geolocator.geocode(f"{zip_code}, {country_code}")
+    location = geolocator.geocode(f"{zip_code}, {country_code}",timeout=5)
 
     if location:
         return location.latitude, location.longitude
