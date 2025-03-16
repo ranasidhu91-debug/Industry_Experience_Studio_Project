@@ -1,4 +1,4 @@
 .env
 __pycache__/
-api_key.py
+API/api_key.py
 .DS_Store
