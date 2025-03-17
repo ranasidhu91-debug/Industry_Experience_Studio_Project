@@ -1,6 +1,16 @@
 import requests
-from API.api_key import openWeather_key
+from API.api_key import iqair_key,open_weather
 from geopy.geocoders import Nominatim
+
+
+
+
+# Get Air Qualit Index First
+
+
+
+
+
 
 def get_coordinates_from_zip(zip_code, country_code):
     """Converts ZIP + country code to latitude & longitude using OpenStreetMap's Nominatim."""
@@ -11,10 +21,19 @@ def get_coordinates_from_zip(zip_code, country_code):
         return location.latitude, location.longitude
     return None, None
 
+def get_coordiantes_from_city_state(city,state):
+    geolocator = Nominatim(user_agent="geoapi")
+    location = geolocator.geocode(city,timeout=5)
+
+    if location:
+        return location.latitude, location.longitude
+    return None, None
 
 
-def get_air_quality(lat,lon):
-    aqi_url_complete = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={openWeather_key}"
+
+
+def get_air_quality(lat,lng):
+    aqi_url_complete = f"http://api.waqi.info/feed/geo::{lat};:{lng}/?token=:{waqi_key}"
 
     try:
         response = requests.get(aqi_url_complete)

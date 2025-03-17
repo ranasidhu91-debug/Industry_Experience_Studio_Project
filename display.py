@@ -15,6 +15,11 @@ if "use_manual" not in st.session_state:
 # ✅ Toggle Between Manual & Automatic Location
 use_manual = st.checkbox("🔄 Switch to Manual Location Entry", value=st.session_state.use_manual)
 
+# ✅ If switching modes, reset lat/lon to prevent stale values
+if use_manual != st.session_state.use_manual:
+    st.session_state.lat = None
+    st.session_state.lon = None
+
 # ✅ Store toggle state
 st.session_state.use_manual = use_manual
 
@@ -22,16 +27,15 @@ st.session_state.use_manual = use_manual
 if st.session_state.use_manual:
     st.subheader("🔴 Enter Your Location Manually")
     zip_code = st.text_input("ZIP Code", placeholder="Enter ZIP Code")
-    country_code = st.text_input("Country Code", placeholder="Enter Country Code (e.g., US, MY)")
 
     if st.button("Submit Location"):
-        if zip_code and country_code:
-            lat, lon = get_coordinates_from_zip(zip_code, country_code)
+        if zip_code:
+            lat, lon = get_coordinates_from_zip(zip_code, "MY")  # Hardcoded to Malaysia
             if lat and lon:
                 st.session_state.lat, st.session_state.lon = lat, lon
                 st.success(f"📍 Using Manual Location: {lat}, {lon}")
             else:
-                st.error("❌ Invalid ZIP or Country. Please enter a valid location.")
+                st.error("❌ Invalid ZIP Code. Please enter a valid Malaysian ZIP Code.")
 else:
     # ✅ Automatic Geolocation Mode
     st.subheader("📍 Use Automatic Location")
@@ -40,12 +44,13 @@ else:
     if geo_data:
         st.session_state.lat = geo_data["latitude"]
         st.session_state.lon = geo_data["longitude"]
-        st.success(f"🌍 Location Detected: {st.session_state.lat}, {st.session_state.lon}")
+        if st.session_state.lat and st.session_state.lon:
+            st.success(f"🌍 Location Detected: {st.session_state.lat}, {st.session_state.lon}")
 
 # ✅ Search Button (works for both manual & automatic input)
 if st.button("Search Air Quality"):
     if st.session_state.lat is None or st.session_state.lon is None:
-        st.warning("⚠️ Please enter a valid ZIP code & country or enable geolocation.")
+        st.warning("⚠️ Please enter a valid ZIP code or enable geolocation.")
     else:
         # ✅ Fetch & Display Air Quality Data
         air_quality = get_air_quality(st.session_state.lat, st.session_state.lon)
@@ -63,3 +68,4 @@ if st.button("Search Air Quality"):
             st.subheader("🛑 Air Pollutants (μg/m³)")
             for key, value in components.items():
                 st.write(f"- **{key.upper()}:** {value}")
+
