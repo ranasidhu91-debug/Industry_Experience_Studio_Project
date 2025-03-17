@@ -1,410 +1,411 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from datetime import datetime
-
-# Set page configuration
-st.set_page_config(page_title="Air Quality and Asthma Educational Insights", layout="wide")
+import json
 
 
-def get_air_quality_data(city, api_key):
-    """Get air quality data from AQICN API"""
-    url = f"https://api.waqi.info/feed/{city}/?token={api_key}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data["status"] == "ok":
-            return data["data"]
-        else:
-            st.error(f"Failed to get data: {data['status']}")
-            return None
-    else:
-        st.error(f"Failed to get data: {response.status_code}")
-        return None
-
-
-def get_air_quality_by_geo(lat, lon, api_key):
-    """Get air quality data from AQICN API based on coordinates"""
-    url = f"https://api.waqi.info/feed/geo:{lat};{lon}/?token={api_key}"
-    response = requests.get(url)
-    if response.status_code == 200:
-        data = response.json()
-        if data["status"] == "ok":
-            return data["data"]
-        else:
-            st.error(f"Failed to get data: {data['status']}")
-            return None
-    else:
-        st.error(f"Failed to get data: {response.status_code}")
-        return None
-
-
-def calculate_air_quality_score(aqi):
-    """Calculate air quality score based on AQI using AQICN standards"""
-    if aqi <= 50:
-        return "Good (0-50)", "Air quality is considered satisfactory, and air pollution poses little or no risk.", "#009966"
-    elif aqi <= 100:
-        return "Moderate (51-100)", "Air quality is acceptable. However, there may be a risk for some people, particularly those who are unusually sensitive to air pollution.", "#FFDE33"
-    elif aqi <= 150:
-        return "Unhealthy for Sensitive Groups (101-150)", "Members of sensitive groups may experience health effects. The general public is less likely to be affected.", "#FF9933"
-    elif aqi <= 200:
-        return "Unhealthy (151-200)", "Some members of the general public may experience health effects; members of sensitive groups may experience more serious health effects.", "#CC0033"
-    elif aqi <= 300:
-        return "Very Unhealthy (201-300)", "Health alert: The risk of health effects is increased for everyone.", "#660099"
-    else:
-        return "Hazardous (300+)", "Health warning of emergency conditions: everyone is more likely to be affected.", "#7E0023"
-
-
-def get_pollutant_impact(pollutant, value):
-    """Get information about how pollutants affect asthma"""
-    impacts = {
-        "co": {
-            "name": "Carbon Monoxide (CO)",
-            "impact": "Mild",
-            "description": "Carbon monoxide reduces the blood's ability to carry oxygen, which may aggravate symptoms for asthma patients, especially at higher concentrations.",
-            "unit": "mg/m³",
-            "threshold": {
-                "safe": 4.4,  # mg/m³
-                "moderate": 9.4,
-                "high": 12.4
-            }
-        },
-        "no2": {
-            "name": "Nitrogen Dioxide (NO₂)",
-            "impact": "Severe",
-            "description": "Nitrogen dioxide is a strong asthma trigger that can increase airway inflammation, reduce resistance to respiratory infections, and lead to asthma attacks.",
-            "unit": "μg/m³",
-            "threshold": {
-                "safe": 40,  # μg/m³
-                "moderate": 100,
-                "high": 200
-            }
-        },
-        "o3": {
-            "name": "Ozone (O₃)",
-            "impact": "Severe",
-            "description": "Ozone is a major trigger for asthma patients, irritating the lungs and causing coughing, chest tightness, and breathing difficulties. Long-term exposure can worsen asthma symptoms.",
-            "unit": "μg/m³",
-            "threshold": {
-                "safe": 100,  # μg/m³
-                "moderate": 160,
-                "high": 240
-            }
-        },
-        "pm25": {
-            "name": "Fine Particulate Matter (PM2.5)",
-            "impact": "Severe",
-            "description": "PM2.5 is a major asthma trigger. These tiny particles can penetrate deep into the lungs, causing inflammation that can worsen asthma symptoms and potentially trigger attacks.",
-            "unit": "μg/m³",
-            "threshold": {
-                "safe": 12,  # μg/m³
-                "moderate": 35,
-                "high": 55
-            }
-        },
-        "pm10": {
-            "name": "Inhalable Particulate Matter (PM10)",
-            "impact": "Moderate",
-            "description": "PM10 can cause throat and eye irritation and may trigger asthma attacks, though typically with less impact than PM2.5.",
-            "unit": "μg/m³",
-            "threshold": {
-                "safe": 20,  # μg/m³
-                "moderate": 50,
-                "high": 150
-            }
-        },
-        "so2": {
-            "name": "Sulfur Dioxide (SO₂)",
-            "impact": "Moderate",
-            "description": "Sulfur dioxide is a known asthma trigger that can cause airway constriction and bronchospasm, particularly affecting those who already have asthma.",
-            "unit": "μg/m³",
-            "threshold": {
-                "safe": 40,  # μg/m³
-                "moderate": 125,
-                "high": 350
-            }
-        }
+st.markdown("""
+<style>
+    .card {
+        background-color: #FFFFFF;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1rem;
     }
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        text-align: center;
+    }
+    .metric-label {
+        font-size: 1rem;
+        color: #616161;
+        text-align: center;
+    }
+    .sub-header {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #0D47A1;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #E3F2FD;
+    }
+    .info-box {
+        background-color: #E3F2FD;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 5px solid #1E88E5;
+        margin-bottom: 1rem;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-    info = impacts.get(pollutant, {"name": pollutant, "impact": "Unknown", "description": "No information available",
-                                   "unit": "μg/m³", "threshold": {"safe": 0, "moderate": 0, "high": 0}})
 
-    # Evaluate severity level
-    level = "Safe"
-    if value > info["threshold"]["high"]:
-        level = "High Risk"
-    elif value > info["threshold"]["moderate"]:
-        level = "Moderate Risk"
-    elif value > info["threshold"]["safe"]:
-        level = "Low Risk"
+def get_air_quality_data(api_key, city, state, country):
+    """
+    Get air quality data from IQAir API for a specified location
+    """
+    url = f"http://api.airvisual.com/v2/city?city={city}&state={state}&country={country}&key={api_key}"
+    response = requests.get(url)
 
-    return info["name"], info["impact"], info["description"], level, info["unit"]
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Failed to get data: {response.status_code} - {response.text}")
+        return None
 
 
-def create_gauge_chart(aqi_value):
-    """Create AQI gauge chart"""
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=aqi_value,
-        domain={'x': [0, 1], 'y': [0, 1]},
-        title={'text': "Air Quality Index"},
-        gauge={
-            'axis': {'range': [None, 300], 'tickwidth': 1, 'tickcolor': "darkblue"},
-            'bar': {'color': "darkblue"},
-            'bgcolor': "white",
-            'borderwidth': 2,
-            'bordercolor': "gray",
-            'steps': [
-                {'range': [0, 50], 'color': '#009966'},
-                {'range': [50, 100], 'color': '#FFDE33'},
-                {'range': [100, 150], 'color': '#FF9933'},
-                {'range': [150, 200], 'color': '#CC0033'},
-                {'range': [200, 300], 'color': '#660099'},
-                {'range': [300, 500], 'color': '#7E0023'}
-            ],
-            'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': aqi_value
-            }
-        }
-    ))
+def calculate_asthma_risk_score(aqi):
+    """
+    Calculate asthma risk score based on AQI
+    """
+    if aqi <= 50:
+        return 1, "Low Risk"
+    elif aqi <= 100:
+        return 2, "Low-Moderate Risk"
+    elif aqi <= 150:
+        return 3, "Moderate Risk"
+    elif aqi <= 200:
+        return 4, "High-Moderate Risk"
+    else:
+        return 5, "High Risk"
 
-    fig.update_layout(
-        height=300,
-        margin=dict(l=20, r=20, t=50, b=20),
-    )
-    return fig
+
+def get_aqi_category(aqi):
+    """
+    Get air quality category based on AQI value
+    """
+    if aqi <= 50:
+        return "Good"
+    elif aqi <= 100:
+        return "Moderate"
+    elif aqi <= 150:
+        return "Unhealthy for Sensitive Groups"
+    elif aqi <= 200:
+        return "Unhealthy"
+    elif aqi <= 300:
+        return "Very Unhealthy"
+    else:
+        return "Hazardous"
+
+
+def get_aqi_color(aqi):
+    """
+    Get color for AQI visualization
+    """
+    if aqi <= 50:
+        return "#00E400"  # Green
+    elif aqi <= 100:
+        return "#FFFF00"  # Yellow
+    elif aqi <= 150:
+        return "#FF7E00"  # Orange
+    elif aqi <= 200:
+        return "#FF0000"  # Red
+    elif aqi <= 300:
+        return "#8F3F97"  # Purple
+    else:
+        return "#7E0023"  # Maroon
 
 
 def main():
     st.title("Air Quality and Asthma Educational Insights")
 
-    st.sidebar.header("Settings")
+    default_api_key = '6f342030-31eb-471b-966d-5294dc20af55'
+    # Sidebar - User Input
+    st.sidebar.header("Location Settings")
 
-    # API Key input
-    api_key = st.sidebar.text_input("Enter AQICN API Key", type="password")
+    country = st.sidebar.selectbox("Country", ["Malaysia"], index=0)
 
-    # Select input method
-    input_method = st.sidebar.radio("Select input method", ["City Name", "GPS Coordinates"])
+    # Major states in Malaysia - Adding the missing states
+    states = ["Kuala Lumpur", "Selangor", "Johor", "Penang", "Sabah", "Sarawak", "Melaka", "Perak", "Pahang"]
+    state = st.sidebar.selectbox("State/Region", states)
 
-    # Malaysia main cities
-    malaysia_cities = {
-        "Kuala Lumpur": "Kuala Lumpur",
-        "Johor Bahru": "Johor",
-        "Penang": "Perai",
-        "Malacca": "Melaka",
-        "Kota Kinabalu": "kota-kinabalu",
-        "Kuching": "kuching",
-        "Ipoh": "ipoh",
-        "Shah Alam": "shah-alam"
+    # Provide city options based on state - ensure all states from the dropdown are included here
+    city_options = {
+        "Kuala Lumpur": ["Kuala Lumpur"],
+        "Selangor": ["Shah Alam", "Petaling Jaya"],
+        "Johor": ["Johor Bahru"],
+        "Penang": ["George Town"],
+        "Sabah": ["Kota Kinabalu", "Sandakan"],
+        "Sarawak": ["Kuching", "Sibu"],
+        "Melaka": ["Melaka"],
+        "Perak": ["Ipoh"],
+        "Pahang": ["Kuantan"]
     }
 
-    if input_method == "City Name":
-        selected_city = st.sidebar.selectbox("Select city", list(malaysia_cities.keys()))
-        city_code = malaysia_cities[selected_city]
-    else:
-        lat = st.sidebar.number_input("Latitude", value=3.1390, format="%.4f")
-        lon = st.sidebar.number_input("Longitude", value=101.6869, format="%.4f")
+    # Ensure default city options for all states, even if not explicitly defined
+    default_city_options = ["Select a city"]
+    city = st.sidebar.selectbox("City", city_options.get(state, default_city_options))
 
-    # Get data button
-    if st.sidebar.button("Get Air Quality Data") and api_key:
-        with st.spinner("Getting data..."):
-            if input_method == "City Name":
-                air_data = get_air_quality_data(city_code, api_key)
-                location_name = selected_city
-            else:
-                air_data = get_air_quality_by_geo(lat, lon, api_key)
-                location_name = f"Coordinates ({lat}, {lon})"
+    api_key = default_api_key
 
-            if air_data:
-                # Successfully got data, display results
-                st.success(f"Successfully retrieved air quality data for {location_name}")
+    # When user clicks to get data
+    if st.sidebar.button("Get Air Quality Data"):
+        if api_key and city != "Select a city":
+            with st.spinner("Getting data..."):
+                data = get_air_quality_data(api_key, city, state, country)
 
-                # Display station info
-                st.subheader("Station Information")
-                st.info(f"Data from: {air_data.get('city', {}).get('name', {})}")
-
-                # Display current date time
-                time_str = air_data.get('data', {}).get('time', {}).get('s',
-                                                                        datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                st.subheader(f"Data updated at: {time_str}")
-
-                # Get AQI
-                aqi = air_data.get('aqi', 0)
-
-                # Display air quality score
-                st.subheader("Overall Air Quality Score")
-                score, description, color = calculate_air_quality_score(aqi)
-
-                col1, col2 = st.columns([1, 2])
-
-                with col1:
-                    st.plotly_chart(create_gauge_chart(aqi), use_container_width=True)
-
-                with col2:
-                    st.markdown(f"### Score: {score}")
-                    st.markdown(f"**{description}**")
-                    st.markdown("---")
-                    st.markdown("### How the Score is Calculated")
-                    st.markdown("""
-                    The Air Quality Index is calculated based on the concentration of these pollutants:
-                    - PM2.5 (Fine Particulate Matter)
-                    - PM10 (Inhalable Particulate Matter)
-                    - O₃ (Ozone)
-                    - NO₂ (Nitrogen Dioxide)
-                    - SO₂ (Sulfur Dioxide)
-                    - CO (Carbon Monoxide)
-
-                    AQI Range from 0 to 500+:
-                    - 0-50: Good - Air quality is satisfactory, poses little or no risk
-                    - 51-100: Moderate - Air quality is acceptable, risk for some sensitive individuals
-                    - 101-150: Unhealthy for Sensitive Groups - Members of sensitive groups may experience health effects
-                    - 151-200: Unhealthy - General public may experience health effects, sensitive groups more serious effects
-                    - 201-300: Very Unhealthy - Health alert, risk increased for everyone
-                    - 300+: Hazardous - Health warnings of emergency conditions, entire population affected
-                    """)
-
-                # Display main pollutant - MODIFIED SECTION
-                st.subheader("Main Pollutant")
-
-                # Extract pollutant data
-                pollutants = {}
-                iaqi = air_data.get('iaqi', {})
-                for key in ['pm25', 'pm10', 'o3', 'no2', 'so2', 'co']:
-                    if key in iaqi:
-                        pollutants[key] = iaqi[key].get('v', 0)
-
-                if pollutants:
-                    highest_pollutant = max(pollutants.items(), key=lambda x: x[1])
-                    pollutant_name, value = highest_pollutant
-
-                    name, impact, description, level, unit = get_pollutant_impact(pollutant_name, value)
-
-                    level_color = {
-                        "High Risk": "red",
-                        "Moderate Risk": "orange",
-                        "Low Risk": "blue",
-                        "Safe": "green"
-                    }.get(level, "gray")
-
-                    st.markdown(f"### Main pollutant: {name}")
-                    st.markdown(f"**Current concentration:** {value} {unit} - <span style='color:{level_color};'>**{level}**</span>",
-                                unsafe_allow_html=True)
-                    st.markdown(f"**Impact on Asthma::** {impact}")
-                    st.markdown(f"**Detailed information:** {description}")
+                if data and data['status'] == 'success':
+                    # Store data for use in other parts of the page
+                    st.session_state.air_data = data
+                    st.success("Data retrieved successfully!")
                 else:
-                    st.warning("No pollutant data available for this location")
+                    st.error("Couldn't retrieve data. Please check location and API key.")
 
-                # Display pollutant effects on asthma
-                st.subheader("Pollutant Effects on Asthma")
+    # Main content area - Display educational insights
+    if 'air_data' in st.session_state:
+        display_educational_insights(st.session_state.air_data)
 
-                pollutant_data = []
-                for pollutant, value in pollutants.items():
-                    name, impact, description, level, unit = get_pollutant_impact(pollutant, value)
-                    pollutant_data.append({
-                        "Name": name,
-                        "Concentration": f"{value} {unit}",
-                        "Impact on Asthma": impact,
-                        "Current Level": level,
-                        "Details": description
-                    })
 
-                # Sort pollutants by impact severity
-                impact_levels = {"Severe": 3, "Moderate": 2, "Mild": 1, "Unknown": 0}
-                pollutant_data.sort(key=lambda x: impact_levels.get(x["Impact on Asthma"], 0), reverse=True)
+def display_educational_insights(data):
+    """
+    Display educational insights about air quality and asthma
+    """
+    st.markdown('<div class="sub-header">Educational Insights on Air Quality and Asthma</div>', unsafe_allow_html=True)
 
-                # Use colors to represent different risk levels
-                for item in pollutant_data:
-                    col = st.columns([1, 4])[1]
-                    with col:
-                        if item["Impact on Asthma"] == "Severe":
-                            color = "red"
-                        elif item["Impact on Asthma"] == "Moderate":
-                            color = "orange"
-                        elif item["Impact on Asthma"] == "Mild":
-                            color = "blue"
-                        else:
-                            color = "gray"
+    pollution_data = data['data']['current']['pollution']
+    weather_data = data['data']['current']['weather']
 
-                        level_color = {
-                            "High Risk": "red",
-                            "Moderate Risk": "orange",
-                            "Low Risk": "blue",
-                            "Safe": "green"
-                        }.get(item["Current Level"], "gray")
+    # Display location information
+    st.markdown(f"""
+        <style>
+            .location-info {{
+                font-size: 12px;  
+                font-weight: bold;  
+            }}
+        </style>
+        <p class="location-info">Location: {data['data']['city']}, {data['data']['state']}, {data['data']['country']}</p>
+        """, unsafe_allow_html=True)
 
-                        st.markdown(
-                            f"### {item['Name']} - <span style='color:{color};'>**{item['Impact on Asthma']} Impact**</span>",
-                            unsafe_allow_html=True)
-                        st.markdown(
-                            f"**Current concentration:** {item['Concentration']} - <span style='color:{level_color};'>**{item['Current Level']}**</span>",
-                            unsafe_allow_html=True)
-                        st.markdown(f"**Details:** {item['Details']}")
-                        st.markdown("---")
+    # AQI scores and explanation
+    aqi_us = pollution_data['aqius']
+    aqi_cn = pollution_data['aqicn']
+    main_pollutant_us = pollution_data['mainus']
+    main_pollutant_cn = pollution_data['maincn']
 
-                        # Provide recommendations based on air quality
-                st.subheader("Asthma Management Recommendations")
-                if aqi <= 100:
-                    st.success("""
-                                                ✅ Current air quality is suitable for most asthma patients:
-                                                - Outdoor activities are generally safe
-                                                - Continue using preventive medications as prescribed
-                                                - Stay vigilant and carry rescue medication
-                                                """)
-                elif aqi <= 150:
-                        st.warning("""
-                                                ⚠️ Moderate air quality risk:
-                                                - Sensitive individuals should consider reducing strenuous outdoor activities
-                                                - Carry rescue medication when going outdoors
-                                                - Monitor for any changes in symptoms
-                                                - Consider keeping windows closed and using air purifiers
-                                                """)
-                else:
-                        st.error("""
-                                                🚨 High air quality risk:
-                                                - Avoid outdoor activities
-                                                - Keep windows closed and use air purifiers
-                                                - Strictly follow your asthma management plan
-                                                - Seek medical attention if symptoms worsen
-                                                """)
-            else:
-                    st.error("Could not retrieve air quality data. Please check your API key and location information.")
+    risk_score, risk_level = calculate_asthma_risk_score(aqi_us)
+    aqi_color = get_aqi_color(aqi_us)
+    aqi_category = get_aqi_category(aqi_us)
+
+
+    # Use a wider layout to prevent text truncation
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.metric("US AQI", aqi_us)
+        st.write(f"**Main Pollutant (US):** {get_pollutant_full_name(main_pollutant_us)}")
+
+    with col2:
+        st.metric("Asthma Risk Score", f"{risk_score}/5")
+        st.write(f"**Risk Level:** {risk_level}")
+
+    # Air Quality Visualization
+    st.markdown('<div class="sub-header">Air Quality Visualization</div>', unsafe_allow_html=True)
+
+    # Create a better AQI visualization
+    aqi_percentage = min(aqi_us / 500, 1.0)
+
+    # Custom AQI gauge visualization
+    st.markdown(f"""
+    <div class="card">
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 1.2rem; font-weight: 500;">AQI Level: {aqi_us} - {aqi_category}</div>
+        </div>
+        <div style="height: 25px; width: 100%; background-color: #f0f0f0; border-radius: 15px; overflow: hidden;">
+            <div style="height: 100%; width: {aqi_percentage * 100}%; background-color: {aqi_color}; border-radius: 15px;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+            <span style="font-size: 0.8rem;">0 - Good</span>
+            <span style="font-size: 0.8rem;">100 - Moderate</span>
+            <span style="font-size: 0.8rem;">200 - Unhealthy</span>
+            <span style="font-size: 0.8rem;">300+ - Hazardous</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Weather information
+    st.markdown('<div class="sub-header">Current Weather Conditions</div>', unsafe_allow_html=True)
+
+    # Better weather display
+    weather_cols = st.columns(3)
+    with weather_cols[0]:
+        st.markdown(f"""
+        <div class="card">
+            <div style="text-align: center;">
+                <div style="font-size: 1rem; color: #616161;">Temperature</div>
+                <div style="font-size: 2rem; font-weight: 600;">{weather_data['tp']}°C</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with weather_cols[1]:
+        st.markdown(f"""
+        <div class="card">
+            <div style="text-align: center;">
+                <div style="font-size: 1rem; color: #616161;">Humidity</div>
+                <div style="font-size: 2rem; font-weight: 600;">{weather_data['hu']}%</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with weather_cols[2]:
+        st.markdown(f"""
+        <div class="card">
+            <div style="text-align: center;">
+                <div style="font-size: 1rem; color: #616161;">Wind Speed</div>
+                <div style="font-size: 2rem; font-weight: 600;">{weather_data['ws']} m/s</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Main pollutant information
+    st.markdown('<div class="sub-header">Main Pollutant Information</div>', unsafe_allow_html=True)
+
+    pollutants = {
+        "p1": "PM10",
+        "p2": "PM2.5",
+        "o3": "Ozone (O₃)",
+        "n2": "Nitrogen Dioxide (NO₂)",
+        "s2": "Sulfur Dioxide (SO₂)",
+        "co": "Carbon Monoxide (CO)"
+    }
+
+    effects = {
+        "p1": "PM10 particles can enter the lungs, irritate and damage lung tissue, and worsen asthma symptoms. These particles typically come from dust, pollen, and mold.",
+        "p2": "PM2.5 is one of the most dangerous air pollutants. These tiny particles can penetrate deep into lungs and bloodstream, causing severe asthma attacks and other respiratory problems.",
+        "o3": "Ozone irritates lung tissues, decreases lung function, and increases the frequency and severity of asthma attacks. It can make asthma patients more sensitive to allergens.",
+        "n2": "Nitrogen dioxide irritates airways, causing inflammation, reducing resistance to respiratory infections, and particularly affects children with asthma.",
+        "s2": "Sulfur dioxide irritates the eyes, nose, and throat, potentially triggering asthma attacks and other respiratory problems, especially in people with existing asthma.",
+        "co": "Carbon monoxide reduces the blood's ability to carry oxygen, potentially worsening symptoms in asthma patients, especially those with pre-existing cardiovascular conditions."
+    }
+
+    mitigation = {
+        "p1": "On days with high PM10 levels, minimize outdoor activities, keep indoor air fresh, and use air purifiers.",
+        "p2": "Use high-efficiency air purifiers, keep windows and doors closed, reduce outdoor activities, especially in areas with heavy traffic.",
+        "o3": "Avoid outdoor activities during afternoons and evenings when ozone levels are highest, especially intense exercise.",
+        "n2": "Avoid areas with heavy traffic, maintain indoor air circulation (unless outdoor pollution is severe), and reduce use of gas appliances.",
+        "s2": "In areas with high sulfur dioxide, limit outdoor time, use air purifiers, and maintain adequate hydration.",
+        "co": "Ensure gas appliances are working properly, install carbon monoxide detectors, and maintain good ventilation."
+    }
+
+    main_pollutant_full = get_pollutant_full_name(main_pollutant_us)
+
+    st.markdown(f"""
+        <style>
+            .info-box h3 {{
+                font-size: 16px;  /* 调整 h3 字体大小 */
+            }}
+        </style>
+        <div class="info-box">
+            <h3>Current Main Pollutant: {main_pollutant_full}</h3>
+            <p>{effects.get(main_pollutant_us, "No information available for this pollutant")}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="sub-header">How to Reduce Risk</div>', unsafe_allow_html=True)
+    st.write(mitigation.get(main_pollutant_us, "No mitigation information available for this pollutant"))
+
+    # All pollutants and their impact on asthma
+    with st.expander("Learn About All Pollutants and Their Impact on Asthma"):
+        # Use Streamlit's table functionality instead of matplotlib
+        pollutant_data = []
+        for code, name in pollutants.items():
+            pollutant_data.append({
+                "Pollutant": name,
+                "Impact on Asthma": effects.get(code, "No information available"),
+                "Mitigation Measures": mitigation.get(code, "No information available")
+            })
+
+        df = pd.DataFrame(pollutant_data)
+        st.dataframe(df, use_container_width=True)
+
+    # Explanation of how AQI scores are calculated
+    with st.expander("Learn How AQI Scores Are Calculated"):
+        st.write("""
+            **Air Quality Index (AQI) Calculation Method:**
+
+            The Air Quality Index is calculated based on the concentration of different pollutants, typically including:
+            - PM2.5 (Fine Particulate Matter)
+            - PM10 (Inhalable Particulate Matter)
+            - O₃ (Ozone)
+            - NO₂ (Nitrogen Dioxide)
+            - SO₂ (Sulfur Dioxide)
+            - CO (Carbon Monoxide)
+
+            Each pollutant has a sub-index, and the final AQI is the maximum of these sub-indices. The US AQI and China AQI use different calculation standards, which is why they differ.
+            """)
+
+        # Use Streamlit table to display AQI levels
+        aqi_levels = [
+            {"AQI Range": "0-50", "Level": "Good",
+             "Health Impact": "Air quality is satisfactory, and air pollution poses little or no risk",
+             "Asthma Risk": "Low"},
+            {"AQI Range": "51-100", "Level": "Moderate",
+             "Health Impact": "Acceptable air quality, but some pollutants may be a concern for a very small number of sensitive individuals",
+             "Asthma Risk": "Low-Moderate"},
+            {"AQI Range": "101-150", "Level": "Unhealthy for Sensitive Groups",
+             "Health Impact": "May affect the health of sensitive groups", "Asthma Risk": "Moderate"},
+            {"AQI Range": "151-200", "Level": "Unhealthy",
+             "Health Impact": "Everyone may begin to experience health effects", "Asthma Risk": "High-Moderate"},
+            {"AQI Range": "201-300", "Level": "Very Unhealthy",
+             "Health Impact": "Health warnings, everyone may experience more serious health effects",
+             "Asthma Risk": "High"},
+            {"AQI Range": "301+", "Level": "Hazardous",
+             "Health Impact": "Health alert, everyone may experience serious health effects",
+             "Asthma Risk": "Very High"}
+        ]
+
+        st.table(pd.DataFrame(aqi_levels))
+
+    # Asthma coping recommendations
+    st.markdown('<div class="sub-header">Recommendations for Asthma Patients</div>', unsafe_allow_html=True)
+
+    if risk_score <= 2:
+        st.success("""
+            **Recommendations for Low Risk Days:**
+            - Carry on with normal daily activities
+            - Carry rescue medication with you
+            - Use controller medications as prescribed
+            - Maintain fresh indoor air quality
+            """)
+    elif risk_score == 3:
+        st.warning("""
+            **Recommendations for Moderate Risk Days:**
+            - Reduce prolonged outdoor activities
+            - Avoid intense outdoor exercise
+            - Monitor for changes in symptoms
+            - Ensure rescue medications are readily available
+            - Use air purifiers to improve indoor air quality
+            """)
     else:
-                if not api_key and st.sidebar.button("Get Air Quality Data"):
-                    st.warning("Please enter your AQICN API key")
+        st.error("""
+            **Recommendations for High Risk Days:**
+            - Stay indoors whenever possible
+            - Keep windows and doors closed, use air purifiers
+            - Avoid outdoor activities
+            - Closely monitor symptoms
+            - Follow medical advice to adjust medication if symptoms worsen
+            - Consider wearing an N95 mask when outdoors
+            """)
 
-                # Display app information
-                st.info("""
-                                    ### Malaysia Air Quality and Asthma Educational Insights
 
-                                    This application provides real-time air quality data and shows its impact on asthma patients.
 
-                                    **Features:**
-                                    - View real-time Air Quality Index (AQI) and detailed scores
-                                    - Understand how different pollutants affect asthma
-                                    - Get asthma management recommendations based on current air quality
+def get_pollutant_full_name(code):
+    """
+    Get the full name of a pollutant
+    """
+    pollutants = {
+        "p1": "PM10 (Inhalable Particulate Matter)",
+        "p2": "PM2.5 (Fine Particulate Matter)",
+        "o3": "Ozone (O₃)",
+        "n2": "Nitrogen Dioxide (NO₂)",
+        "s2": "Sulfur Dioxide (SO₂)",
+        "co": "Carbon Monoxide (CO)"
+    }
+    return pollutants.get(code, code)
 
-                                    **How to use:**
-                                    1. Enter your AQICN API key in the left menu
-                                    2. Select a Malaysian city or enter custom coordinates
-                                    3. Click the "Get Air Quality Data" button
-                                    """)
-
-                # Display educational information about air quality and asthma
-                st.subheader("Relationship Between Air Quality and Asthma")
-                st.markdown("""
-                                    Air pollution is one of the major triggers for asthma. The following pollutants significantly impact asthma patients:
-
-                                    - **Fine Particulate Matter (PM2.5)**: These tiny particles can penetrate deep into the lungs, causing inflammatory responses and are one of the primary triggers for asthma.
-                                    - **Ozone (O₃)**: Ground-level ozone is created by sunlight reacting with pollutants from vehicle exhaust and other sources. It irritates the airways and can worsen asthma symptoms.
-                                    - **Nitrogen Dioxide (NO₂)**: Mainly from vehicle exhaust and industrial emissions, it increases airway inflammation and reduces resistance to respiratory infections.
-                                    - **Sulfur Dioxide (SO₂)**: An industrial pollutant that can cause airway constriction and bronchospasm.
-
-                                    Research shows that on days with poor air quality, there is a significant increase in asthma-related emergency room visits and hospitalizations.
-                                    """)
 
 if __name__ == "__main__":
     main()
