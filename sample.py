@@ -26,7 +26,12 @@ aqi_url_complete = f"http://api.airvisual.com/v2/city?city=Kuala Lumpuer&state=C
 #pprint(data)
 
 
-states = f"http://api.airvisual.com/v2/states?country=Malaysia&key={iqair_key}"
 
-response = requests.get(states)
 
+city_data = f'http://api.airvisual.com/v2/city?city=Bandar Penawar&state=Johor&country=Malaysia&key={iqair_key}'
+
+response = requests.get(city_data)
+
+data = response.json()
+
+pprint(data)
