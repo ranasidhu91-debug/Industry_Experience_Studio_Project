@@ -42,12 +42,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+IQAIR_API_KEY = '6f342030-31eb-471b-966d-5294dc20af55'
+OPENWEATHER_API_KEY = '02e0050a1354c6262cc263e7883b132f'
 
-def get_air_quality_data(api_key, city, state, country):
+
+def get_air_quality_data(city, state, country):
     """
     Get air quality data from IQAir API for a specified location
     """
-    url = f"http://api.airvisual.com/v2/city?city={city}&state={state}&country={country}&key={api_key}"
+    url = f"http://api.airvisual.com/v2/city?city={city}&state={state}&country={country}&key={IQAIR_API_KEY}"
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -57,11 +60,11 @@ def get_air_quality_data(api_key, city, state, country):
         return None
 
 
-def get_openweather_pollution_data(api_key, lat, lon):
+def get_openweather_pollution_data(lat, lon):
     """
     Get detailed pollution data from OpenWeather API
     """
-    url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={api_key}"
+    url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={OPENWEATHER_API_KEY}"
     response = requests.get(url)
 
     if response.status_code == 200:
@@ -126,8 +129,6 @@ def get_aqi_color(aqi):
 def main():
     st.title("Air Quality and Asthma Educational Insights")
 
-    default_iqair_api_key = '6f342030-31eb-471b-966d-5294dc20af55'
-
     # Sidebar - User Input
     st.sidebar.header("Location Settings")
 
@@ -154,17 +155,12 @@ def main():
     default_city_options = ["Select a city"]
     city = st.sidebar.selectbox("City", city_options.get(state, default_city_options))
 
-    # API Keys
-    st.sidebar.header("API Keys")
-    iqair_api_key = st.sidebar.text_input("IQAir API Key", value=default_iqair_api_key, type="password")
-    default_openweather_api_key = "02e0050a1354c6262cc263e7883b132f"
-    openweather_api_key = st.sidebar.text_input("OpenWeather API Key", value=default_openweather_api_key, type="password")
 
     # When user clicks to get data
     if st.sidebar.button("Get Air Quality Data"):
-        if iqair_api_key and openweather_api_key and city != "Select a city":
+        if city != "Select a city":
             with st.spinner("Getting data..."):
-                iqair_data = get_air_quality_data(iqair_api_key, city, state, country)
+                iqair_data = get_air_quality_data(city, state, country)
 
                 if iqair_data and iqair_data['status'] == 'success':
                     # Get coordinates from IQAir data for OpenWeather API
@@ -172,7 +168,7 @@ def main():
                     lon = iqair_data['data']['location']['coordinates'][0]
 
                     # Get OpenWeather pollution data
-                    openweather_data = get_openweather_pollution_data(openweather_api_key, lat, lon)
+                    openweather_data = get_openweather_pollution_data(lat, lon)
 
                     if openweather_data:
                         # Store both datasets for use in other parts of the page
