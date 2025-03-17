@@ -128,10 +128,10 @@ st.markdown("""
 - 🕶️ **Wear a mask** in crowded or polluted areas.
 """)
 
-# Download AQI data
-st.download_button(
-    label="📥 Download AQI Data",
-    data=df.to_csv(index=False),
-    file_name="Malaysia_AQI_Prediction.csv",
-    mime="text/csv"
-)
+# # Download AQI data
+# st.download_button(
+#     label="📥 Download AQI Data",
+#     data=df.to_csv(index=False),
+#     file_name="Malaysia_AQI_Prediction.csv",
+#     mime="text/csv"
+# )

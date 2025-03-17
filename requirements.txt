@@ -29,6 +29,7 @@ rpds-py==0.23.1
 six==1.17.0
 smmap==5.0.2
 streamlit==1.43.2
+SQLAlchemy==2.0.39
 tenacity==9.0.0
 toml==0.10.2
 tornado==6.4.2

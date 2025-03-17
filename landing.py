@@ -30,12 +30,12 @@ if st.session_state.authenticated:
         default=True,
     )
     project_1_page = st.Page(
-        "pages/test.py",
+        "pages/US1.2.py",
         title="Real Time Monitoring",
         icon="📊",
     )
     project_2_page = st.Page(
-        "pages/test2.py",
+        "pages/US2.2.py",
         title="Route Planning",
         icon="🗺️",
     )
