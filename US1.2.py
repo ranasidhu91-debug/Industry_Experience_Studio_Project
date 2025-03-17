@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import json
 
-
+# Apply custom CSS for the selected UI elements
 st.markdown("""
 <style>
     .card {
@@ -53,7 +53,21 @@ def get_air_quality_data(api_key, city, state, country):
     if response.status_code == 200:
         return response.json()
     else:
-        st.error(f"Failed to get data: {response.status_code} - {response.text}")
+        st.error(f"Failed to get data from IQAir: {response.status_code} - {response.text}")
+        return None
+
+
+def get_openweather_pollution_data(api_key, lat, lon):
+    """
+    Get detailed pollution data from OpenWeather API
+    """
+    url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={api_key}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        st.error(f"Failed to get data from OpenWeather: {response.status_code} - {response.text}")
         return None
 
 
@@ -112,17 +126,18 @@ def get_aqi_color(aqi):
 def main():
     st.title("Air Quality and Asthma Educational Insights")
 
-    default_api_key = '6f342030-31eb-471b-966d-5294dc20af55'
+    default_iqair_api_key = '6f342030-31eb-471b-966d-5294dc20af55'
+
     # Sidebar - User Input
     st.sidebar.header("Location Settings")
 
     country = st.sidebar.selectbox("Country", ["Malaysia"], index=0)
 
-    # Major states in Malaysia - Adding the missing states
+    # Major states in Malaysia
     states = ["Kuala Lumpur", "Selangor", "Johor", "Penang", "Sabah", "Sarawak", "Melaka", "Perak", "Pahang"]
     state = st.sidebar.selectbox("State/Region", states)
 
-    # Provide city options based on state - ensure all states from the dropdown are included here
+    # Provide city options based on state
     city_options = {
         "Kuala Lumpur": ["Kuala Lumpur"],
         "Selangor": ["Shah Alam", "Petaling Jaya"],
@@ -139,34 +154,51 @@ def main():
     default_city_options = ["Select a city"]
     city = st.sidebar.selectbox("City", city_options.get(state, default_city_options))
 
-    api_key = default_api_key
+    # API Keys
+    st.sidebar.header("API Keys")
+    iqair_api_key = st.sidebar.text_input("IQAir API Key", value=default_iqair_api_key, type="password")
+    default_openweather_api_key = "02e0050a1354c6262cc263e7883b132f"
+    openweather_api_key = st.sidebar.text_input("OpenWeather API Key", value=default_openweather_api_key, type="password")
 
     # When user clicks to get data
     if st.sidebar.button("Get Air Quality Data"):
-        if api_key and city != "Select a city":
+        if iqair_api_key and openweather_api_key and city != "Select a city":
             with st.spinner("Getting data..."):
-                data = get_air_quality_data(api_key, city, state, country)
+                iqair_data = get_air_quality_data(iqair_api_key, city, state, country)
 
-                if data and data['status'] == 'success':
-                    # Store data for use in other parts of the page
-                    st.session_state.air_data = data
-                    st.success("Data retrieved successfully!")
+                if iqair_data and iqair_data['status'] == 'success':
+                    # Get coordinates from IQAir data for OpenWeather API
+                    lat = iqair_data['data']['location']['coordinates'][1]
+                    lon = iqair_data['data']['location']['coordinates'][0]
+
+                    # Get OpenWeather pollution data
+                    openweather_data = get_openweather_pollution_data(openweather_api_key, lat, lon)
+
+                    if openweather_data:
+                        # Store both datasets for use in other parts of the page
+                        st.session_state.air_data = iqair_data
+                        st.session_state.pollutants_data = openweather_data
+                        st.success("Data retrieved successfully!")
+                    else:
+                        st.error("Couldn't retrieve pollution data from OpenWeather API.")
                 else:
-                    st.error("Couldn't retrieve data. Please check location and API key.")
+                    st.error("Couldn't retrieve data from IQAir. Please check location and API key.")
+        else:
+            st.error("Please ensure both API keys are provided and a city is selected.")
 
     # Main content area - Display educational insights
-    if 'air_data' in st.session_state:
-        display_educational_insights(st.session_state.air_data)
+    if 'air_data' in st.session_state and 'pollutants_data' in st.session_state:
+        display_educational_insights(st.session_state.air_data, st.session_state.pollutants_data)
 
 
-def display_educational_insights(data):
+def display_educational_insights(iqair_data, openweather_data):
     """
     Display educational insights about air quality and asthma
     """
     st.markdown('<div class="sub-header">Educational Insights on Air Quality and Asthma</div>', unsafe_allow_html=True)
 
-    pollution_data = data['data']['current']['pollution']
-    weather_data = data['data']['current']['weather']
+    pollution_data = iqair_data['data']['current']['pollution']
+    weather_data = iqair_data['data']['current']['weather']
 
     # Display location information
     st.markdown(f"""
@@ -176,7 +208,7 @@ def display_educational_insights(data):
                 font-weight: bold;  
             }}
         </style>
-        <p class="location-info">Location: {data['data']['city']}, {data['data']['state']}, {data['data']['country']}</p>
+        <p class="location-info">Location: {iqair_data['data']['city']}, {iqair_data['data']['state']}, {iqair_data['data']['country']}</p>
         """, unsafe_allow_html=True)
 
     # AQI scores and explanation
@@ -188,7 +220,6 @@ def display_educational_insights(data):
     risk_score, risk_level = calculate_asthma_risk_score(aqi_us)
     aqi_color = get_aqi_color(aqi_us)
     aqi_category = get_aqi_category(aqi_us)
-
 
     # Use a wider layout to prevent text truncation
     col1, col2 = st.columns([1, 1])
@@ -260,66 +291,126 @@ def display_educational_insights(data):
         </div>
         """, unsafe_allow_html=True)
 
-    # Main pollutant information
-    st.markdown('<div class="sub-header">Main Pollutant Information</div>', unsafe_allow_html=True)
+    # Extract pollutant concentrations from OpenWeather API
+    if 'list' in openweather_data and len(openweather_data['list']) > 0:
+        components = openweather_data['list'][0]['components']
 
-    pollutants = {
-        "p1": "PM10",
-        "p2": "PM2.5",
-        "o3": "Ozone (O₃)",
-        "n2": "Nitrogen Dioxide (NO₂)",
-        "s2": "Sulfur Dioxide (SO₂)",
-        "co": "Carbon Monoxide (CO)"
-    }
+        # Display detailed pollutant information
+        st.markdown('<div class="sub-header">Detailed Pollutant Information</div>', unsafe_allow_html=True)
 
-    effects = {
-        "p1": "PM10 particles can enter the lungs, irritate and damage lung tissue, and worsen asthma symptoms. These particles typically come from dust, pollen, and mold.",
-        "p2": "PM2.5 is one of the most dangerous air pollutants. These tiny particles can penetrate deep into lungs and bloodstream, causing severe asthma attacks and other respiratory problems.",
-        "o3": "Ozone irritates lung tissues, decreases lung function, and increases the frequency and severity of asthma attacks. It can make asthma patients more sensitive to allergens.",
-        "n2": "Nitrogen dioxide irritates airways, causing inflammation, reducing resistance to respiratory infections, and particularly affects children with asthma.",
-        "s2": "Sulfur dioxide irritates the eyes, nose, and throat, potentially triggering asthma attacks and other respiratory problems, especially in people with existing asthma.",
-        "co": "Carbon monoxide reduces the blood's ability to carry oxygen, potentially worsening symptoms in asthma patients, especially those with pre-existing cardiovascular conditions."
-    }
+        # Define pollutant units and safe levels
+        pollutant_info = {
+            "co": {"name": "Carbon Monoxide (CO)", "unit": "μg/m³", "safe_level": 10000},
+            "no": {"name": "Nitric Oxide (NO)", "unit": "μg/m³", "safe_level": 30},
+            "no2": {"name": "Nitrogen Dioxide (NO₂)", "unit": "μg/m³", "safe_level": 40},
+            "o3": {"name": "Ozone (O₃)", "unit": "μg/m³", "safe_level": 100},
+            "so2": {"name": "Sulfur Dioxide (SO₂)", "unit": "μg/m³", "safe_level": 20},
+            "pm2_5": {"name": "PM2.5", "unit": "μg/m³", "safe_level": 10},
+            "pm10": {"name": "PM10", "unit": "μg/m³", "safe_level": 20},
+            "nh3": {"name": "Ammonia (NH₃)", "unit": "μg/m³", "safe_level": 100}
+        }
 
-    mitigation = {
-        "p1": "On days with high PM10 levels, minimize outdoor activities, keep indoor air fresh, and use air purifiers.",
-        "p2": "Use high-efficiency air purifiers, keep windows and doors closed, reduce outdoor activities, especially in areas with heavy traffic.",
-        "o3": "Avoid outdoor activities during afternoons and evenings when ozone levels are highest, especially intense exercise.",
-        "n2": "Avoid areas with heavy traffic, maintain indoor air circulation (unless outdoor pollution is severe), and reduce use of gas appliances.",
-        "s2": "In areas with high sulfur dioxide, limit outdoor time, use air purifiers, and maintain adequate hydration.",
-        "co": "Ensure gas appliances are working properly, install carbon monoxide detectors, and maintain good ventilation."
-    }
-
-    main_pollutant_full = get_pollutant_full_name(main_pollutant_us)
-
-    st.markdown(f"""
-        <style>
-            .info-box h3 {{
-                font-size: 16px;  /* 调整 h3 字体大小 */
-            }}
-        </style>
-        <div class="info-box">
-            <h3>Current Main Pollutant: {main_pollutant_full}</h3>
-            <p>{effects.get(main_pollutant_us, "No information available for this pollutant")}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown('<div class="sub-header">How to Reduce Risk</div>', unsafe_allow_html=True)
-    st.write(mitigation.get(main_pollutant_us, "No mitigation information available for this pollutant"))
-
-    # All pollutants and their impact on asthma
-    with st.expander("Learn About All Pollutants and Their Impact on Asthma"):
-        # Use Streamlit's table functionality instead of matplotlib
+        # Create pollutant data without progress bars
         pollutant_data = []
-        for code, name in pollutants.items():
-            pollutant_data.append({
-                "Pollutant": name,
-                "Impact on Asthma": effects.get(code, "No information available"),
-                "Mitigation Measures": mitigation.get(code, "No information available")
-            })
 
-        df = pd.DataFrame(pollutant_data)
-        st.dataframe(df, use_container_width=True)
+        for key, value in components.items():
+            if key in pollutant_info:
+                safe_level = pollutant_info[key]["safe_level"]
+                pollutant_data.append({
+                    "pollutant": key,
+                    "name": pollutant_info[key]["name"],
+                    "value": value,
+                    "unit": pollutant_info[key]["unit"],
+                    "safe_level": safe_level
+                })
+
+        # Display pollutants in a grid without progress bars
+        cols = st.columns(2)
+        for i, pollutant in enumerate(pollutant_data):
+            col_index = i % 2
+            with cols[col_index]:
+                st.markdown(f"""
+                <div class="card">
+                    <div style="text-align: center;">
+                        <div style="font-size: 1rem; color: #616161;">{pollutant["name"]}</div>
+                        <div style="font-size: 1.5rem; font-weight: 600;">{pollutant["value"]} {pollutant["unit"]}</div>
+                    </div>
+                    <div style="margin-top: 0.5rem;">
+                        <div style="font-size: 0.8rem; color: #616161;">Safe level: {pollutant["safe_level"]} {pollutant["unit"]}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Main pollutant information
+        st.markdown('<div class="sub-header">Main Pollutant Information</div>', unsafe_allow_html=True)
+
+        pollutant_code_map = {
+            "p1": "pm10",
+            "p2": "pm2_5",
+            "o3": "o3",
+            "n2": "no2",
+            "s2": "so2",
+            "co": "co"
+        }
+
+        main_pollutant_code = pollutant_code_map.get(main_pollutant_us, "pm2_5")
+
+        effects = {
+            "pm10": "PM10 particles can enter the lungs, irritate and damage lung tissue, and worsen asthma symptoms. These particles typically come from dust, pollen, and mold.",
+            "pm2_5": "PM2.5 is one of the most dangerous air pollutants. These tiny particles can penetrate deep into lungs and bloodstream, causing severe asthma attacks and other respiratory problems.",
+            "o3": "Ozone irritates lung tissues, decreases lung function, and increases the frequency and severity of asthma attacks. It can make asthma patients more sensitive to allergens.",
+            "no2": "Nitrogen dioxide irritates airways, causing inflammation, reducing resistance to respiratory infections, and particularly affects children with asthma.",
+            "so2": "Sulfur dioxide irritates the eyes, nose, and throat, potentially triggering asthma attacks and other respiratory problems, especially in people with existing asthma.",
+            "co": "Carbon monoxide reduces the blood's ability to carry oxygen, potentially worsening symptoms in asthma patients, especially those with pre-existing cardiovascular conditions."
+        }
+
+        mitigation = {
+            "pm10": "On days with high PM10 levels, minimize outdoor activities, keep indoor air fresh, and use air purifiers.",
+            "pm2_5": "Use high-efficiency air purifiers, keep windows and doors closed, reduce outdoor activities, especially in areas with heavy traffic.",
+            "o3": "Avoid outdoor activities during afternoons and evenings when ozone levels are highest, especially intense exercise.",
+            "no2": "Avoid areas with heavy traffic, maintain indoor air circulation (unless outdoor pollution is severe), and reduce use of gas appliances.",
+            "so2": "In areas with high sulfur dioxide, limit outdoor time, use air purifiers, and maintain adequate hydration.",
+            "co": "Ensure gas appliances are working properly, install carbon monoxide detectors, and maintain good ventilation."
+        }
+
+        main_pollutant_full = get_pollutant_full_name(main_pollutant_us)
+        main_pollutant_value = components.get(main_pollutant_code, "N/A")
+        main_pollutant_unit = pollutant_info.get(main_pollutant_code, {}).get("unit", "μg/m³")
+
+        st.markdown(f"""
+            <style>
+                .info-box h3 {{
+                    font-size: 16px;
+                }}
+            </style>
+            <div class="info-box">
+                <h3>Current Main Pollutant: {main_pollutant_full} - {main_pollutant_value} {main_pollutant_unit}</h3>
+                <p>{effects.get(main_pollutant_code, "No information available for this pollutant")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<div class="sub-header">How to Reduce Risk</div>', unsafe_allow_html=True)
+        st.write(mitigation.get(main_pollutant_code, "No mitigation information available for this pollutant"))
+
+        # All pollutants and their impact on asthma
+        with st.expander("Learn About All Pollutants and Their Impact on Asthma"):
+            # Use Streamlit's table functionality instead of matplotlib
+            pollutant_data = []
+            for code, info in pollutant_info.items():
+                if code in components:
+                    pollutant_data.append({
+                        "Pollutant": info["name"],
+                        "Current Level": f"{components[code]} {info['unit']}",
+                        "Safe Level": f"{info['safe_level']} {info['unit']}",
+                        "Impact on Asthma": effects.get(code, "No information available"),
+                        "Mitigation Measures": mitigation.get(code, "No information available")
+                    })
+
+            df = pd.DataFrame(pollutant_data)
+            st.dataframe(df, use_container_width=True)
+
+    else:
+        st.error("No detailed pollutant data available from OpenWeather API.")
 
     # Explanation of how AQI scores are calculated
     with st.expander("Learn How AQI Scores Are Calculated"):
@@ -391,7 +482,6 @@ def display_educational_insights(data):
             """)
 
 
-
 def get_pollutant_full_name(code):
     """
     Get the full name of a pollutant
@@ -405,6 +495,24 @@ def get_pollutant_full_name(code):
         "co": "Carbon Monoxide (CO)"
     }
     return pollutants.get(code, code)
+
+
+def get_level_color(value, safe_level):
+    """
+    Get color based on pollutant level compared to safe level
+    """
+    percentage = (value / safe_level) * 100
+
+    if percentage <= 50:
+        return "#00E400"  # Green
+    elif percentage <= 100:
+        return "#FFFF00"  # Yellow
+    elif percentage <= 150:
+        return "#FF7E00"  # Orange
+    elif percentage <= 200:
+        return "#FF0000"  # Red
+    else:
+        return "#8F3F97"  # Purple
 
 
 if __name__ == "__main__":
