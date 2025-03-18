@@ -93,7 +93,7 @@ filtered_data = filtered_data[filtered_data["City"].isin(selected_cities)]
 
 # merge aqi dataframe and coordinate dataframe
 df_merged = pd.merge(city_df_select, filtered_data, on=["State", "City"], how="left")
-st.write(df_merged)
+# st.write(df_merged)
 
 # Sort cities by AQI (best to worst) and add ranking
 if not filtered_data.empty:
@@ -171,7 +171,7 @@ layer = pdk.Layer(
     data=df_merged_2,
     get_position=["longitude", "latitude"],  # Ensure correct order
     get_color=["aqi * 2", "255 - (aqi * 2)", "0", "180"],  # Example color mapping
-    get_radius=10000,
+    get_radius=20000,
     pickable=True
 )
 
