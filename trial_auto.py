@@ -3,7 +3,17 @@ from backend import aqi_and_components
 from streamlit_js_eval import get_geolocation
 from accessory_functions import *
 from educational_insight import display_educational_insights
-from aqi_map import display_aqi_map
+from aqi_map import display_aqi_map,display_heatmap
+
+@st.cache_data
+def cached_get_locations():
+    """Caches location retrieval to avoid recomputation."""
+    return getting_locations()
+
+@st.cache_data
+def cached_get_air_quality_data(lat, lng):
+    """Caches AQI data for a given location to minimize API calls."""
+    return aqi_and_components(lat, lng)
 
 # Apply custom CSS for the selected UI elements
 st.markdown("""
@@ -55,7 +65,11 @@ def main():
     # Toggle between auto-location and manual selection
     use_auto_location = st.sidebar.checkbox("Use My Location", value=False)
 
-    coord, states, city_options = getting_locations()
+    coord, states, city_options = cached_get_locations()
+
+    city = "Select a city"
+
+    map_type = st.sidebar.radio("Select Map Type", ["AQI", "Pollutant Levels"])
 
     if use_auto_location:
     # if st.sidebar.button('Use My Location'):
@@ -81,14 +95,14 @@ def main():
             if use_auto_location and "auto_location" in st.session_state:
             #if "auto_location" in st.session_state:
                 lat, lng = st.session_state.auto_location
-            elif city != "Select a city":
+            elif 'city' in locals() and city != "Select a city":
                 lat, lng = coord[state][city]['Latitude'], coord[state][city]['Longitude']
                 st.session_state.manual_location = (lat,lng)
             else:
                 st.error("Please Select a Location.")
                 return
 
-            aqi, components = aqi_and_components(lat, lng)
+            aqi, components = cached_get_air_quality_data(lat,lng)
             if aqi and components:
                 st.session_state.aqi_data = aqi
                 st.session_state.components_data = components
@@ -100,7 +114,11 @@ def main():
     # Main content area - Display educational insights
     if 'aqi_data' in st.session_state and 'components_data' in st.session_state and 'location' in st.session_state:
         display_educational_insights(st.session_state.aqi_data, st.session_state.components_data)
-        display_aqi_map(st.session_state.location, st.session_state.aqi_data)
+        if map_type == 'AQI':
+            display_aqi_map(st.session_state.location, st.session_state.aqi_data)
+        else:
+            display_heatmap(st.session_state.location,st.session_state.components_data)
+
 
 
 

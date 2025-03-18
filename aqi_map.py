@@ -1,18 +1,31 @@
 import streamlit as st
 import pydeck as pdk
 import pandas as pd
+from accessory_functions import get_aqi_color,hex_to_rgb
 def display_aqi_map(location, aqi_data):
     lat, lng = location
     aqi_value = aqi_data['aqi']
-    
-    color = [0, 255, 0] if aqi_value <= 50 else [255, 255, 0] if aqi_value <= 100 else [255, 165, 0] if aqi_value <= 150 else [255, 0, 0] if aqi_value <= 200 else [153, 0, 76]
+    color = get_aqi_color(aqi_value)
+    color = hex_to_rgb(color)
     
     map_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=pd.DataFrame({"lat": [lat], "lon": [lng], "aqi": [aqi_value]}),
+        "IconLayer",
+        data=pd.DataFrame({
+            "lat": [lat],
+            "lon": [lng],
+            "aqi": [aqi_value],
+            "icon_data": [
+                {
+                    "url": "https://upload.wikimedia.org/wikipedia/commons/e/ec/RedDot.svg", 
+                    "width": 128,
+                    "height": 128,
+                    "anchorY": 128
+                }
+            ]
+        }),
         get_position=["lon", "lat"],
-        get_radius=2,
-        get_fill_color=color,
+        get_icon="icon_data",
+        get_size=20,
         pickable=True,
     )
     
@@ -29,6 +42,41 @@ def display_aqi_map(location, aqi_data):
         layers=[map_layer],
         tooltip={
             "html": "<b>AQI:</b> {aqi}",
+            "style": {"backgroundColor": "steelblue", "color": "white"}
+        }
+    ))
+
+def display_heatmap(location, components):
+    lat, lng = location
+    
+    data = pd.DataFrame([
+        {"lat": lat, "lon": lng, "value": components[comp], "component": comp} for comp in components
+    ])
+    
+    heatmap_layer = pdk.Layer(
+        "HeatmapLayer",
+        data=data,
+        get_position=["lon", "lat"],
+        get_weight="value",
+        radius_pixels=60,
+        pickable=True,
+    )
+    
+    view_state = pdk.ViewState(
+        latitude=lat,
+        longitude=lng,
+        zoom=10,
+        pitch=0,
+        min_zoom=5,
+        max_zoom=15,
+    )
+    
+    st.pydeck_chart(pdk.Deck(
+        map_style="mapbox://styles/mapbox/light-v9",
+        initial_view_state=view_state,
+        layers=[heatmap_layer],
+        tooltip={
+            "html": "<b>Component:</b> {component}<br><b>Value:</b> {value}",
             "style": {"backgroundColor": "steelblue", "color": "white"}
         }
     ))

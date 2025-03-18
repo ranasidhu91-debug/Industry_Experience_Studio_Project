@@ -88,3 +88,8 @@ def getting_locations():
     states = locations['State'].unique().tolist()
     state_cities = locations.groupby('State')['City'].apply(list).to_dict()
     return state_cities_coord,states,state_cities
+
+def hex_to_rgb(hex_color):
+    """Convert hex color (#RRGGBB) to RGB list [R, G, B]."""
+    hex_color = hex_color.lstrip('#')  # Remove '#' if present
+    return [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]

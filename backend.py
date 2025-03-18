@@ -2,36 +2,6 @@ import requests
 from API.api_key import iqair_key,open_weather
 from geopy.geocoders import Nominatim
 
-
-
-
-# Get Air Qualit Index First
-
-
-
-
-
-
-#def get_coordinates_from_zip(zip_code, country_code):
-#    """Converts ZIP + country code to latitude & longitude using OpenStreetMap's Nominatim."""
-#    geolocator = Nominatim(user_agent="geoapi")
-#    location = geolocator.geocode(f"{zip_code}, {country_code}",timeout=5)
-
-#    if location:
-#        return location.latitude, location.longitude
-#    return None, None
-
-# def get_coordiantes_from_city_state(city,state):
-#     geolocator = Nominatim(user_agent="geoapi")
-#     location = geolocator.geocode(city,timeout=5)
-
-#     if location:
-#         return location.latitude, location.longitude
-#     return None, None
-
-
-
-
 def aqi_and_components(lat,lng):
     aqi = getting_aqi(lat,lng)
     components = getting_components(lat,lng)
