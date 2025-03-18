@@ -18,42 +18,54 @@ def cached_get_air_quality_data(lat, lng):
 # Apply custom CSS for the selected UI elements
 st.markdown("""
 <style>
+    /* Card styling with theme-compatible colors */
     .card {
-        background-color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
         padding: 1.5rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
+    /* Strong contrast for metric values */
     .metric-value {
         font-size: 2.5rem;
         font-weight: 700;
         text-align: center;
+        color: var(--text-color, inherit) !important;
     }
+    /* Semi-strong contrast for labels */
     .metric-label {
         font-size: 1rem;
-        color: #616161;
         text-align: center;
+        color: var(--text-color, inherit) !important;
+        opacity: 0.8;
     }
+    /* Header with border that respects theme colors */
     .sub-header {
         font-size: 1.8rem;
         font-weight: 600;
-        color: #0D47A1;
+        color: var(--primary-color, #0D47A1);
         margin-top: 2rem;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #E3F2FD;
+        border-bottom: 2px solid var(--primary-color, #E3F2FD);
     }
+    /* Info box that maintains contrast in dark and light themes */
     .info-box {
-        background-color: #E3F2FD;
+        background-color: rgba(30, 136, 229, 0.1);
         padding: 1rem;
         border-radius: 8px;
-        border-left: 5px solid #1E88E5;
+        border-left: 5px solid var(--primary-color, #1E88E5);
         margin-bottom: 1rem;
+        color: var(--text-color, inherit) !important;
+    }
+    /* Ensure all text has appropriate contrast */
+    p, span, div {
+        color: var(--text-color, inherit) !important;
     }
 </style>
 """, unsafe_allow_html=True)
-
 
 
 def main():

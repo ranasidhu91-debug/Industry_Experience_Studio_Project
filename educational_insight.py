@@ -54,7 +54,7 @@ def display_educational_insights(iqair_data, components):
         <div style="text-align: center; margin-bottom: 1rem;">
             <div style="font-size: 1.2rem; font-weight: 500;">AQI Level: {aqi_us} - {aqi_category}</div>
         </div>
-        <div style="height: 25px; width: 100%; background-color: #f0f0f0; border-radius: 15px; overflow: hidden;">
+        <div style="height: 25px; width: 100%; background-color: rgba(240, 240, 240, 0.2); border-radius: 15px; overflow: hidden;">
             <div style="height: 100%; width: {aqi_percentage * 100}%; background-color: {aqi_color}; border-radius: 15px;"></div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
@@ -75,7 +75,7 @@ def display_educational_insights(iqair_data, components):
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Temperature</div>
+                <div style="font-size: 1rem;">Temperature</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['tp']}°C</div>
             </div>
         </div>
@@ -85,7 +85,7 @@ def display_educational_insights(iqair_data, components):
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Humidity</div>
+                <div style="font-size: 1rem;">Humidity</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['hu']}%</div>
             </div>
         </div>
@@ -95,7 +95,7 @@ def display_educational_insights(iqair_data, components):
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Wind Speed</div>
+                <div style="font-size: 1rem;">Wind Speed</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['ws']} m/s</div>
             </div>
         </div>
@@ -143,11 +143,11 @@ def display_educational_insights(iqair_data, components):
                 st.markdown(f"""
                 <div class="card">
                     <div style="text-align: center;">
-                        <div style="font-size: 1rem; color: #616161;">{pollutant["name"]}</div>
+                        <div style="font-size: 1rem;">{pollutant["name"]}</div>
                         <div style="font-size: 1.5rem; font-weight: 600;">{pollutant["value"]} {pollutant["unit"]}</div>
                     </div>
                     <div style="margin-top: 0.5rem;">
-                        <div style="font-size: 0.8rem; color: #616161;">Safe level: {pollutant["safe_level"]} {pollutant["unit"]}</div>
+                        <div style="font-size: 0.8rem;">Safe level: {pollutant["safe_level"]} {pollutant["unit"]}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -189,13 +189,8 @@ def display_educational_insights(iqair_data, components):
         main_pollutant_unit = pollutant_info.get(main_pollutant_code, {}).get("unit", "μg/m³")
 
         st.markdown(f"""
-            <style>
-                .info-box h3 {{
-                    font-size: 16px;
-                }}
-            </style>
             <div class="info-box">
-                <h3>Current Main Pollutant: {main_pollutant_full} - {main_pollutant_value} {main_pollutant_unit}</h3>
+                <h3 style="font-size: 16px;">Current Main Pollutant: {main_pollutant_full} - {main_pollutant_value} {main_pollutant_unit}</h3>
                 <p>{effects.get(main_pollutant_code, "No information available for this pollutant")}</p>
             </div>
             """, unsafe_allow_html=True)
