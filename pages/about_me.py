@@ -27,11 +27,11 @@ with col4:
     st.write(
         """
         1. Tan Chien Yuan
-        2. 
-        3.
-        4.
-        5.
-        6.
+        2. Rana Atinder Sidhu
+        3. Sisi Wang
+        4. Yamin Wang
+        5. Wanning Chen
+        6. Tabassi Shahjabeen
         """
     )
 

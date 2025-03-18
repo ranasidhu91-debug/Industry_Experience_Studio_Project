@@ -153,8 +153,8 @@ st.markdown("""
 """)
 
 # Define Pydeck layer
-print(df_merged)
-print(type(df_merged))
+# print(df_merged)
+# print(type(df_merged))
 
 df_merged_2 = pd.DataFrame({
     "state": df_merged["State"].tolist(),

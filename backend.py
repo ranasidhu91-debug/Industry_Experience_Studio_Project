@@ -8,7 +8,7 @@ def aqi_and_components(lat,lng):
     return aqi,components
 
 def getting_aqi(lat,lng):
-    iqair_url = f"http://api.airvisual.com/v2/nearest_city?lat={lat}&lon={lng}&key={iqair_key}"
+    iqair_url = f"http://api.airvisual.com/v2/nearest_city?lat={lat}&lon={lng}&key=3f8d1e2f-379b-4746-a35f-de2b48ba8d2c"
     try:
 
         response = requests.get(iqair_url)
@@ -39,7 +39,7 @@ def getting_aqi(lat,lng):
 
 def getting_components(lat,lng):
     try:
-        openweather_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lng}&appid={open_weather}"
+        openweather_url = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lng}&appid=bdb7679f0e611d60b4d22710ba38f3f1"
         response = requests.get(openweather_url)
         if response.status_code != 200:
             return {"error":f"❌ API Error {response.status_code}:{response.json().get('message', 'Unknown Error')}"}

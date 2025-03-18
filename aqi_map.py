@@ -46,37 +46,3 @@ def display_aqi_map(location, aqi_data):
         }
     ))
 
-def display_heatmap(location, components):
-    lat, lng = location
-    
-    data = pd.DataFrame([
-        {"lat": lat, "lon": lng, "value": components[comp], "component": comp} for comp in components
-    ])
-    
-    heatmap_layer = pdk.Layer(
-        "HeatmapLayer",
-        data=data,
-        get_position=["lon", "lat"],
-        get_weight="value",
-        radius_pixels=60,
-        pickable=True,
-    )
-    
-    view_state = pdk.ViewState(
-        latitude=lat,
-        longitude=lng,
-        zoom=10,
-        pitch=0,
-        min_zoom=5,
-        max_zoom=15,
-    )
-    
-    st.pydeck_chart(pdk.Deck(
-        map_style="mapbox://styles/mapbox/light-v9",
-        initial_view_state=view_state,
-        layers=[heatmap_layer],
-        tooltip={
-            "html": "<b>Component:</b> {component}<br><b>Value:</b> {value}",
-            "style": {"backgroundColor": "steelblue", "color": "white"}
-        }
-    ))
