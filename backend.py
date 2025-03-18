@@ -1,6 +1,6 @@
 import requests
-from API.api_key import iqair_key,open_weather
-from geopy.geocoders import Nominatim
+#from API.api_key import iqair_key,open_weather
+#from geopy.geocoders import Nominatim
 
 def aqi_and_components(lat,lng):
     aqi = getting_aqi(lat,lng)
