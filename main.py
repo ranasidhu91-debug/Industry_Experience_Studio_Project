@@ -1,6 +1,6 @@
 import streamlit as st
 from streamlit_geolocation import streamlit_geolocation
-from backend import get_coordinates_from_zip, get_air_quality
+from backend import aqi_and_components
 
 
 def main():
@@ -10,4 +10,5 @@ def main():
         st.session_state.lat = None
         st.session_state.lon = None
 
+    
     
