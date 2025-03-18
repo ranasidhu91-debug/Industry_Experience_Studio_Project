@@ -396,7 +396,7 @@ def display_educational_insights(iqair_data, openweather_data):
         st.write(mitigation.get(main_pollutant_code, "No mitigation information available for this pollutant"))
 
         # All pollutants and their impact on asthma
-        with st.expander("Learn About All Pollutants and Their Impact on Asthma"):
+        with st.expander("Learn About All Pollutants and Their Impact on Asthma (double click table element to expand)"):
             # Use Streamlit's table functionality instead of matplotlib
             pollutant_data = []
             for code, info in pollutant_info.items():
