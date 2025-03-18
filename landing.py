@@ -50,7 +50,11 @@ if st.session_state.authenticated:
 
     # --- SHARED ON ALL PAGES ---
     st.logo("Lungs_of_Tomorrow_with_logo.png", size="large")
-    st.sidebar.markdown("Lungs of Tomorrow - TM01")
+    # st.sidebar.markdown("Lungs of Tomorrow - TM01")
+
+    # with st.sidebar:
+    #     country = st.selectbox("Country", ["Malaysia"], index=0)
+
 
     # --- RUN NAVIGATION ---
     pg.run()

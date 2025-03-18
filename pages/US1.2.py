@@ -520,3 +520,5 @@ def get_level_color(value, safe_level):
 
 if __name__ == "__main__":
     main()
+
+main()
