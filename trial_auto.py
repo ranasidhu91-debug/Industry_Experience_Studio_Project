@@ -3,7 +3,7 @@ from backend import aqi_and_components
 from streamlit_js_eval import get_geolocation
 from accessory_functions import *
 from educational_insight import display_educational_insights
-from aqi_map import display_aqi_map
+from aqi_map import display_aqi_map,display_heatmap
 
 @st.cache_data
 def cached_get_locations():
@@ -69,6 +69,8 @@ def main():
 
     city = "Select a city"
 
+    map_type = st.sidebar.radio("Select Map Type", ["AQI", "Pollutant Levels"])
+
     if use_auto_location:
     # if st.sidebar.button('Use My Location'):
         #location = streamlit_geolocation()
@@ -112,10 +114,17 @@ def main():
     # Main content area - Display educational insights
     if 'aqi_data' in st.session_state and 'components_data' in st.session_state and 'location' in st.session_state:
         display_educational_insights(st.session_state.aqi_data, st.session_state.components_data)
-        display_aqi_map(st.session_state.location, st.session_state.aqi_data)
+        if map_type == 'AQI':
+            display_aqi_map(st.session_state.location, st.session_state.aqi_data)
+        else:
+            display_heatmap(st.session_state.location,st.session_state.components_data)
+
+
+
+
+
 
 
 if __name__ == "__main__":
     main()
 
-main()
