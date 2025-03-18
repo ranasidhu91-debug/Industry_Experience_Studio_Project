@@ -3,41 +3,53 @@ import requests
 import pandas as pd
 import json
 
-# Apply custom CSS for the selected UI elements
 st.markdown("""
 <style>
+    /* Card styling with theme-compatible colors */
     .card {
-        background-color: #FFFFFF;
+        background-color: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
         padding: 1.5rem;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
     }
+    /* Strong contrast for metric values */
     .metric-value {
         font-size: 2.5rem;
         font-weight: 700;
         text-align: center;
+        color: var(--text-color, inherit) !important;
     }
+    /* Semi-strong contrast for labels */
     .metric-label {
         font-size: 1rem;
-        color: #616161;
         text-align: center;
+        color: var(--text-color, inherit) !important;
+        opacity: 0.8;
     }
+    /* Header with border that respects theme colors */
     .sub-header {
         font-size: 1.8rem;
         font-weight: 600;
-        color: #0D47A1;
+        color: var(--primary-color, #0D47A1);
         margin-top: 2rem;
         margin-bottom: 1rem;
         padding-bottom: 0.5rem;
-        border-bottom: 2px solid #E3F2FD;
+        border-bottom: 2px solid var(--primary-color, #E3F2FD);
     }
+    /* Info box that maintains contrast in dark and light themes */
     .info-box {
-        background-color: #E3F2FD;
+        background-color: rgba(30, 136, 229, 0.1);
         padding: 1rem;
         border-radius: 8px;
-        border-left: 5px solid #1E88E5;
+        border-left: 5px solid var(--primary-color, #1E88E5);
         margin-bottom: 1rem;
+        color: var(--text-color, inherit) !important;
+    }
+    /* Ensure all text has appropriate contrast */
+    p, span, div {
+        color: var(--text-color, inherit) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -196,7 +208,7 @@ def display_educational_insights(iqair_data, openweather_data):
     pollution_data = iqair_data['data']['current']['pollution']
     weather_data = iqair_data['data']['current']['weather']
 
-    # Display location information
+    # Display location information - removed inline styling that affected text color
     st.markdown(f"""
         <style>
             .location-info {{
@@ -231,16 +243,16 @@ def display_educational_insights(iqair_data, openweather_data):
     # Air Quality Visualization
     st.markdown('<div class="sub-header">Air Quality Visualization</div>', unsafe_allow_html=True)
 
-    # Create a better AQI visualization
+    # Create a better AQI visualization - fixed text contrasts
     aqi_percentage = min(aqi_us / 500, 1.0)
 
-    # Custom AQI gauge visualization
+    # Custom AQI gauge visualization with high-contrast text
     st.markdown(f"""
     <div class="card">
         <div style="text-align: center; margin-bottom: 1rem;">
             <div style="font-size: 1.2rem; font-weight: 500;">AQI Level: {aqi_us} - {aqi_category}</div>
         </div>
-        <div style="height: 25px; width: 100%; background-color: #f0f0f0; border-radius: 15px; overflow: hidden;">
+        <div style="height: 25px; width: 100%; background-color: rgba(240, 240, 240, 0.2); border-radius: 15px; overflow: hidden;">
             <div style="height: 100%; width: {aqi_percentage * 100}%; background-color: {aqi_color}; border-radius: 15px;"></div>
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
@@ -255,13 +267,13 @@ def display_educational_insights(iqair_data, openweather_data):
     # Weather information
     st.markdown('<div class="sub-header">Current Weather Conditions</div>', unsafe_allow_html=True)
 
-    # Better weather display
+    # Better weather display with theme-compatible colors
     weather_cols = st.columns(3)
     with weather_cols[0]:
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Temperature</div>
+                <div style="font-size: 1rem;">Temperature</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['tp']}°C</div>
             </div>
         </div>
@@ -271,7 +283,7 @@ def display_educational_insights(iqair_data, openweather_data):
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Humidity</div>
+                <div style="font-size: 1rem;">Humidity</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['hu']}%</div>
             </div>
         </div>
@@ -281,7 +293,7 @@ def display_educational_insights(iqair_data, openweather_data):
         st.markdown(f"""
         <div class="card">
             <div style="text-align: center;">
-                <div style="font-size: 1rem; color: #616161;">Wind Speed</div>
+                <div style="font-size: 1rem;">Wind Speed</div>
                 <div style="font-size: 2rem; font-weight: 600;">{weather_data['ws']} m/s</div>
             </div>
         </div>
@@ -320,7 +332,7 @@ def display_educational_insights(iqair_data, openweather_data):
                     "safe_level": safe_level
                 })
 
-        # Display pollutants in a grid without progress bars
+        # Display pollutants in a grid with theme-compatible cards
         cols = st.columns(2)
         for i, pollutant in enumerate(pollutant_data):
             col_index = i % 2
@@ -328,11 +340,11 @@ def display_educational_insights(iqair_data, openweather_data):
                 st.markdown(f"""
                 <div class="card">
                     <div style="text-align: center;">
-                        <div style="font-size: 1rem; color: #616161;">{pollutant["name"]}</div>
+                        <div style="font-size: 1rem;">{pollutant["name"]}</div>
                         <div style="font-size: 1.5rem; font-weight: 600;">{pollutant["value"]} {pollutant["unit"]}</div>
                     </div>
                     <div style="margin-top: 0.5rem;">
-                        <div style="font-size: 0.8rem; color: #616161;">Safe level: {pollutant["safe_level"]} {pollutant["unit"]}</div>
+                        <div style="font-size: 0.8rem;">Safe level: {pollutant["safe_level"]} {pollutant["unit"]}</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -374,13 +386,8 @@ def display_educational_insights(iqair_data, openweather_data):
         main_pollutant_unit = pollutant_info.get(main_pollutant_code, {}).get("unit", "μg/m³")
 
         st.markdown(f"""
-            <style>
-                .info-box h3 {{
-                    font-size: 16px;
-                }}
-            </style>
             <div class="info-box">
-                <h3>Current Main Pollutant: {main_pollutant_full} - {main_pollutant_value} {main_pollutant_unit}</h3>
+                <h3 style="font-size: 16px;">Current Main Pollutant: {main_pollutant_full} - {main_pollutant_value} {main_pollutant_unit}</h3>
                 <p>{effects.get(main_pollutant_code, "No information available for this pollutant")}</p>
             </div>
             """, unsafe_allow_html=True)
