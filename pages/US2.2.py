@@ -10,6 +10,7 @@ DB_NAME = "defaultdb"
 DB_USER = "avnadmin"
 DB_PASS = "AVNS_rEaABFKKIHR8O6Sxp6m"
 
+
 # 📌 Function to Establish a Database Connection
 def get_db_connection():
     conn = psycopg2.connect(
@@ -21,9 +22,11 @@ def get_db_connection():
     )
     return conn
 
+
 # Create a database connection using SQLAlchemy
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = sqlalchemy.create_engine(DATABASE_URL)
+
 
 def fetch_data(query_text):
     query = sqlalchemy.text(query_text)
@@ -32,15 +35,16 @@ def fetch_data(query_text):
         data = pd.DataFrame(result, columns=["ID", "State", "City", "Date", "AQI"])
         return data
 
+
 # 🔄 Load AQI Data from PostgreSQL
 @st.cache_data
 def load_data():
     conn = get_db_connection()
-    query = "SELECT * FROM air_quality ORDER BY date DESC;"  # 确保数据库中存在该表
+    query = "SELECT * FROM air_quality ORDER BY date DESC;"
     df = fetch_data(query)
-    # 格式化日期
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
     return df
+
 
 df = load_data()
 
@@ -49,45 +53,45 @@ st.title("🌍 Malaysia AQI Prediction for Asthmatic Travelers 🏥")
 st.write("Check the air quality before planning your trip!")
 
 # Select travel date
-selected_date = st.date_input("📅 Select travel date")
-
-
+selected_date = st.date_input("📅 **Select Travel Date**")
 
 # Filter data based on date
 filtered_data = df[df["Date"] == selected_date]
 
+# Select state
+all_states = filtered_data["State"].unique()
+selected_states = st.multiselect("🌏 **Select State(s)**", all_states)
 
-print(filtered_data)
-# Select cities (default: empty)
+# Filter by selected states
+filtered_data = filtered_data[filtered_data["State"].isin(selected_states)]
+
+# Select cities dynamically based on selected states
 all_cities = filtered_data["City"].unique()
-selected_cities = st.multiselect("🏙️ Select cities", all_cities, default=[])
-print(selected_cities)
+selected_cities = st.multiselect("🏙️ **Select City(ies)**", all_cities)
 
 # Filter by selected cities
-if selected_cities:
-    filtered_data = filtered_data[filtered_data["City"].isin(selected_cities)]
-else:
-    st.warning("⚠️ Please select at least one city to view AQI data.")
+filtered_data = filtered_data[filtered_data["City"].isin(selected_cities)]
 
 # Sort cities by AQI (best to worst) and add ranking
 if not filtered_data.empty:
     sorted_data = filtered_data.sort_values(by="AQI").reset_index(drop=True)
-    sorted_data.insert(0, "Rank", range(1, len(sorted_data) + 1))  # Add ranking column
+    sorted_data.insert(0, "Rank", range(1, len(sorted_data) + 1))
 else:
     sorted_data = pd.DataFrame()
+    st.warning("⚠️ No data available for the selected date, state, or city!")
 
 # User input: child's asthma severity
 asthma_severity = st.radio(
-    "🏥 Select your child's asthma severity:",
+    "🏥 **Select Your Child's Asthma Severity**:",
     ["Mild", "Moderate", "Severe"],
     index=0
 )
 
 # Display AQI sorted list with ranking
 if not sorted_data.empty:
-    st.subheader("📊 Recommended Cities (Best Air Quality First)")
+    st.subheader("📊 **Recommended Cities (Best Air Quality First)**")
 
-    # Apply AQI color coding
+
     def highlight_aqi(val):
         if val <= 50:
             return 'background-color: lightgreen; color: black; font-weight: bold;'
@@ -96,7 +100,6 @@ if not sorted_data.empty:
         return 'background-color: red; color: white; font-weight: bold;'
 
 
-    # Show styled table
     st.dataframe(
         sorted_data[["Rank", "State", "City", "AQI"]]
         .style.applymap(highlight_aqi, subset=['AQI'])
@@ -104,7 +107,7 @@ if not sorted_data.empty:
     )
 
     # Personalized recommendation
-    st.subheader("🌟 Personalized Recommendation")
+    st.subheader("🌟 **Personalized Recommendation**")
     best_city = sorted_data.iloc[0]["City"]
     st.write(f"✅ Based on the air quality, we recommend visiting **{best_city}**.")
 
@@ -115,11 +118,9 @@ if not sorted_data.empty:
         st.info("🟡 Medium risk: Prefer indoor activities and check AQI frequently.")
     else:
         st.success("✅ Low risk: Outdoor activities are fine, but avoid pollution hotspots.")
-else:
-    st.info("📍 No cities selected yet. Please choose a city to see recommendations.")
 
 # Asthma travel tips
-st.subheader("🚀 Asthma Travel Tips")
+st.subheader("🚀 **Asthma Travel Tips**")
 st.markdown("""
 - 🌿 **Check the AQI before traveling** and avoid high pollution areas.
 - 💊 **Carry asthma medication**, including an inhaler.
@@ -127,11 +128,3 @@ st.markdown("""
 - 🏨 **Stay in non-smoking hotels** to prevent asthma triggers.
 - 🕶️ **Wear a mask** in crowded or polluted areas.
 """)
-
-# # Download AQI data
-# st.download_button(
-#     label="📥 Download AQI Data",
-#     data=df.to_csv(index=False),
-#     file_name="Malaysia_AQI_Prediction.csv",
-#     mime="text/csv"
-# )
