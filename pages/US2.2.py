@@ -2,13 +2,20 @@ import streamlit as st
 import pandas as pd
 import psycopg2
 import sqlalchemy
+import pydeck as pdk
 
 # 🔑 Database Credentials
-DB_HOST = "fit5120-fit5120.e.aivencloud.com"
-DB_PORT = "19305"
+# DB_HOST = "fit5120-fit5120.e.aivencloud.com"
+# DB_PORT = "19305"
+# DB_NAME = "defaultdb"
+# DB_USER = "avnadmin"
+# DB_PASS = "AVNS_rEaABFKKIHR8O6Sxp6m"
+
+DB_HOST = "tm01onboarding-tm01onboarding.e.aivencloud.com"
+DB_PORT = "13812"
 DB_NAME = "defaultdb"
 DB_USER = "avnadmin"
-DB_PASS = "AVNS_rEaABFKKIHR8O6Sxp6m"
+DB_PASS = "AVNS_AFmtCZU-RoKIAHPUNUx"
 
 
 # 📌 Function to Establish a Database Connection
@@ -32,7 +39,7 @@ def fetch_data(query_text):
     query = sqlalchemy.text(query_text)
     with engine.connect() as connection:
         result = connection.execute(query)
-        data = pd.DataFrame(result, columns=["ID", "State", "City", "Date", "AQI"])
+        data = pd.DataFrame(result, columns=["State", "City", "Date", "AQI"]) #"ID", 
         return data
 
 
@@ -45,8 +52,16 @@ def load_data():
     df["Date"] = pd.to_datetime(df["Date"]).dt.date
     return df
 
-
 df = load_data()
+
+# Load predicted Data city locations
+@st.cache_data
+def load_city_cords():
+    city_df = pd.read_csv("perdicted_city_lat_lon.csv")  # Update with your file path
+    return city_df
+
+city_df = load_city_cords()
+
 
 # Title
 st.title("🌍 Malaysia AQI Prediction for Asthmatic Travelers 🏥")
@@ -70,7 +85,15 @@ all_cities = filtered_data["City"].unique()
 selected_cities = st.multiselect("🏙️ **Select City(ies)**", all_cities)
 
 # Filter by selected cities
+city_df_select = city_df[city_df["City"].isin(selected_cities)]
+# st.write(city_df_select)
+
 filtered_data = filtered_data[filtered_data["City"].isin(selected_cities)]
+# st.write(filtered_data)
+
+# merge aqi dataframe and coordinate dataframe
+df_merged = pd.merge(city_df_select, filtered_data, on=["State", "City"], how="left")
+# st.write(df_merged)
 
 # Sort cities by AQI (best to worst) and add ranking
 if not filtered_data.empty:
@@ -128,3 +151,42 @@ st.markdown("""
 - 🏨 **Stay in non-smoking hotels** to prevent asthma triggers.
 - 🕶️ **Wear a mask** in crowded or polluted areas.
 """)
+
+# Define Pydeck layer
+print(df_merged)
+print(type(df_merged))
+
+df_merged_2 = pd.DataFrame({
+    "state": df_merged["State"].tolist(),
+    "city": df_merged["City"].tolist(),
+    "latitude": df_merged["Latitude"].tolist(),
+    "longitude": df_merged["Longitude"].tolist(),
+    "aqi": df_merged["AQI"].tolist()
+})
+
+
+# Define Pydeck Layer
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=df_merged_2,
+    get_position=["longitude", "latitude"],  # Ensure correct order
+    get_color=["aqi * 2", "255 - (aqi * 2)", "0", "180"],  # Example color mapping
+    get_radius=20000,
+    pickable=True
+)
+
+# Define View
+view_state = pdk.ViewState(
+    latitude=df_merged_2["latitude"].mean(),
+    longitude=df_merged_2["longitude"].mean(),
+    zoom=7,
+    pitch=0
+)
+
+# Render Pydeck Map
+st.pydeck_chart(pdk.Deck(
+    layers=[layer],
+    initial_view_state=view_state,
+    tooltip={"text": "City: {city}\nAQI: {aqi}"}
+))
+
